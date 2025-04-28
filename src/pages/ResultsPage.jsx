@@ -109,9 +109,16 @@ const ResultsPage = () => {
   return (
     <MathJaxContext>
       <div className="max-w-5xl mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-6">
-          Результати тестів користувачів
-        </h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Результати тестів користувачів</h1>
+          <button
+            onClick={() => navigate("/test")}
+            className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg"
+          >
+            Пройти тест
+          </button>
+        </div>
+
         <div className="space-y-4">
           {Object.entries(grouped).map(([email, { score, results }]) => (
             <div key={email} className="bg-white shadow rounded-lg p-4">
