@@ -150,9 +150,12 @@ const TestPage = () => {
       return;
     }
 
-    const answerDocRef = doc(db, "userAnswers", `${user.uid}_${Date.now()}`);
+    const answerDocRef = doc(db, "userAnswers", user.uid);
     const existing = await getDoc(answerDocRef);
-    if (existing.exists()) return;
+    if (existing.exists()) {
+      alert("Ви вже проходили тест.");
+      return;
+    }
 
     if (Object.keys(answers).length === 0) {
       await setDoc(answerDocRef, {
