@@ -5,12 +5,12 @@ import TestPage from "./pages/TestPage";
 import ResultsPage from "./pages/ResultsPage";
 import AdminPanel from "./pages/AdminPanel";
 // import { useEffect } from "react";
-// import { uploadQuestions } from "./uploadQuestions";
+// import { uploadQuestionsUkr } from "./uploadUkrQuestions";
 
 export default function App() {
   // useEffect(() => {
   //   // Викликаємо завантаження питань при першому завантаженні
-  //   uploadQuestions();
+  //   uploadQuestionsUkr();
   // }, []); // Порожній масив залежностей, щоб викликати лише один раз
   return (
     <Routes>

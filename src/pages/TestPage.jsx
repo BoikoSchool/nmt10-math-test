@@ -39,8 +39,14 @@ const formatTime = (seconds) => {
 
 const TestPage = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState({});
-  const [questions, setQuestions] = useState([]);
+  const [answersBySubject, setAnswersBySubject] = useState({
+    math: {},
+    ukr: {},
+  });
+  const [questionsBySubject, setQuestionsBySubject] = useState({
+    math: [],
+    ukr: [],
+  });
   const [loading, setLoading] = useState(true);
   const [sessionStatus, setSessionStatus] = useState("loading");
   const [startTimestamp, setStartTimestamp] = useState(null);
@@ -48,37 +54,44 @@ const TestPage = () => {
   const [initialDuration, setInitialDuration] = useState(180);
   const [timeLeft, setTimeLeft] = useState(180);
   const [testCompleted, setTestCompleted] = useState(false);
-  const [totalPoints, setTotalPoints] = useState(0);
+  const [totalPoints, setTotalPoints] = useState({});
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [userEmail, setUserEmail] = useState(null);
+  const [subject, setSubject] = useState("math");
+
+  const questions = questionsBySubject[subject] || [];
+  const answers = answersBySubject[subject] || {};
+  const currentQuestion = questions[currentQuestionIndex];
 
   useEffect(() => {
-    const fetchQuestions = async () => {
-      const snapshot = await getDocs(collection(db, "questions"));
+    const fetchQuestions = async (subjectToFetch) => {
+      const collectionName =
+        subjectToFetch === "math" ? "questions" : "questionsUkr";
+      const snapshot = await getDocs(collection(db, collectionName));
       let data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
-      // Відібрати та перемішати тільки питання типу "single"
       const singleQuestions = data.filter((q) => q.type === "single");
       const otherQuestions = data.filter((q) => q.type !== "single");
 
-      // Функція перемішування масиву
-      const shuffleArray = (arr) => {
-        return arr
+      const shuffleArray = (arr) =>
+        arr
           .map((item) => ({ item, sort: Math.random() }))
           .sort((a, b) => a.sort - b.sort)
           .map(({ item }) => item);
-      };
 
       const shuffledSingle = shuffleArray(singleQuestions);
-
-      // Об'єднати: спочатку shuffled single, потім інші
       data = [...shuffledSingle, ...otherQuestions];
 
-      setQuestions(data);
+      setQuestionsBySubject((prev) => ({ ...prev, [subjectToFetch]: data }));
+      setAnswersBySubject((prev) => ({
+        ...prev,
+        [subjectToFetch]: prev[subjectToFetch] || {},
+      }));
       setLoading(false);
     };
 
-    fetchQuestions();
+    fetchQuestions("math");
+    fetchQuestions("ukr");
   }, []);
 
   useEffect(() => {
@@ -140,10 +153,14 @@ const TestPage = () => {
     return () => unsubscribe();
   }, []);
 
-  const currentQuestion = questions[currentQuestionIndex];
-
   const handleAnswer = (answer) => {
-    setAnswers((prev) => ({ ...prev, [currentQuestionIndex]: answer }));
+    setAnswersBySubject((prev) => ({
+      ...prev,
+      [subject]: {
+        ...prev[subject],
+        [currentQuestionIndex]: answer,
+      },
+    }));
   };
 
   const goToNext = () => {
@@ -175,66 +192,62 @@ const TestPage = () => {
       return;
     }
 
-    if (Object.keys(answers).length === 0) {
-      await setDoc(answerDocRef, {
-        uid: user.uid,
-        userEmail: user.email,
-        results: [],
-        score: 0,
-        submittedAt: serverTimestamp(),
-        autoSubmitted,
-      });
-      setTestCompleted(true);
-      return;
+    const allResults = [];
+    const scores = {};
+
+    for (const subj of ["math", "ukr"]) {
+      const subjQuestions = questionsBySubject[subj] || [];
+      const subjAnswers = answersBySubject[subj] || {};
+      let subjPoints = 0;
+      const subjResults = subjQuestions
+        .map((question, index) => {
+          const userAnswer = subjAnswers[index];
+          if (!userAnswer) return null;
+
+          let earnedPoints = 0;
+          if (question.type === "single") {
+            earnedPoints = userAnswer === question.answer ? 1 : 0;
+          } else if (question.type === "input") {
+            earnedPoints = userAnswer === question.answer ? 2 : 0;
+          } else if (question.type === "matching") {
+            earnedPoints = calculateMatchingPoints(userAnswer, question.answer);
+          }
+
+          subjPoints += earnedPoints;
+
+          return {
+            subject: subj,
+            questionId: question.id,
+            questionType: question.type,
+            userAnswer,
+            correctAnswer: question.answer,
+            earnedPoints,
+            isCorrect:
+              (question.type === "single" && earnedPoints === 1) ||
+              (question.type === "input" && earnedPoints === 2) ||
+              (question.type === "matching" && earnedPoints > 0),
+          };
+        })
+        .filter(Boolean);
+
+      allResults.push(...subjResults);
+      scores[subj] = subjPoints;
     }
-
-    let points = 0;
-    const detailedResults = questions
-      .map((question, index) => {
-        const userAnswer = answers[index];
-        if (!userAnswer) return null;
-
-        let earnedPoints = 0;
-        if (question.type === "single") {
-          earnedPoints = userAnswer === question.answer ? 1 : 0;
-        } else if (question.type === "input") {
-          earnedPoints = userAnswer === question.answer ? 2 : 0;
-        } else if (question.type === "matching") {
-          earnedPoints = calculateMatchingPoints(userAnswer, question.answer);
-        }
-
-        points += earnedPoints;
-
-        return {
-          questionId: question.id,
-          questionType: question.type,
-          userAnswer,
-          correctAnswer: question.answer,
-          earnedPoints,
-          isCorrect:
-            (question.type === "single" && earnedPoints === 1) ||
-            (question.type === "input" && earnedPoints === 2) ||
-            (question.type === "matching" && earnedPoints > 0),
-        };
-      })
-      .filter(Boolean);
 
     await setDoc(answerDocRef, {
       uid: user.uid,
       userEmail: user.email,
-      results: detailedResults,
-      score: points,
+      results: allResults,
+      score: scores,
       submittedAt: serverTimestamp(),
       autoSubmitted,
     });
 
-    setTotalPoints(points);
+    setTotalPoints(scores);
     setTestCompleted(true);
   };
 
-  if (loading || sessionStatus === "loading") {
-    return <p>Завантаження...</p>;
-  }
+  if (loading || sessionStatus === "loading") return <p>Завантаження...</p>;
 
   if (testCompleted) {
     return (
@@ -244,8 +257,11 @@ const TestPage = () => {
             Дякуємо! Тест пройдено.
           </h2>
           <p className="text-lg text-gray-800">
-            Ваш результат: <span className="font-semibold">{totalPoints}</span>{" "}
-            балів.
+            Математика:{" "}
+            <span className="font-semibold">{totalPoints.math ?? 0}</span> балів
+            <br />
+            Українська мова:{" "}
+            <span className="font-semibold">{totalPoints.ukr ?? 0}</span> балів
           </p>
         </div>
       </div>
@@ -275,6 +291,31 @@ const TestPage = () => {
   return (
     <MathJaxContext config={mathJaxConfig}>
       <div className="max-w-5xl mx-auto p-6">
+        <div className="flex justify-center gap-4 my-4">
+          <button
+            onClick={() => {
+              setSubject("math");
+              setCurrentQuestionIndex(0);
+            }}
+            className={`px-4 py-2 rounded-lg font-semibold ${
+              subject === "math" ? "bg-blue-600 text-white" : "bg-gray-200"
+            }`}
+          >
+            Математика
+          </button>
+          <button
+            onClick={() => {
+              setSubject("ukr");
+              setCurrentQuestionIndex(0);
+            }}
+            className={`px-4 py-2 rounded-lg font-semibold ${
+              subject === "ukr" ? "bg-blue-600 text-white" : "bg-gray-200"
+            }`}
+          >
+            Українська мова
+          </button>
+        </div>
+
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold">
             Питання{" "}
@@ -302,7 +343,7 @@ const TestPage = () => {
 
         <div className="bg-white rounded-xl shadow-md p-6 mb-4">
           <QuestionRenderer
-            key={currentQuestionIndex}
+            key={`${subject}-${currentQuestionIndex}`}
             question={currentQuestion}
             onAnswer={handleAnswer}
             selectedAnswer={answers[currentQuestionIndex] || null}
