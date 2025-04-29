@@ -116,7 +116,7 @@ export default function AdminPanel() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold mb-4">Панель адміністратора</h1>
         <button
-          onClick={() => navigate("/admin")}
+          onClick={() => navigate("/results")}
           className="bg-purple-600 text-white px-4 py-2 rounded"
         >
           Адміністрування
