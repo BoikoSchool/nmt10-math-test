@@ -1,16 +1,23 @@
+// TestPage.jsx
 import { useState, useEffect } from "react";
-import { collection, getDocs, doc, setDoc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  doc,
+  onSnapshot,
+  setDoc,
+  getDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { db, auth } from "../firebase";
 import QuestionRenderer from "../components/QuestionRenderer";
 import { MathJaxContext } from "better-react-mathjax";
-import { useNavigate } from "react-router-dom";
 
 const mathJaxConfig = {
   loader: { load: ["[tex]/ams"] },
   tex: { packages: { "[+]": ["ams"] } },
 };
 
-// Функція для оцінки matching-питання
 const calculateMatchingPoints = (userAnswer, correctAnswer) => {
   if (!userAnswer || !correctAnswer) return 0;
   let points = 0;
@@ -19,7 +26,14 @@ const calculateMatchingPoints = (userAnswer, correctAnswer) => {
       points++;
     }
   }
-  return points; // 0, 1, 2 або 3
+  return points;
+};
+
+const formatTime = (seconds) => {
+  const h = String(Math.floor(seconds / 3600)).padStart(2, "0");
+  const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, "0");
+  const s = String(seconds % 60).padStart(2, "0");
+  return `${h}:${m}:${s}`;
 };
 
 const TestPage = () => {
@@ -27,7 +41,14 @@ const TestPage = () => {
   const [answers, setAnswers] = useState({});
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+  const [sessionStatus, setSessionStatus] = useState("loading");
+  const [startTimestamp, setStartTimestamp] = useState(null);
+  const [pausedDuration, setPausedDuration] = useState(0);
+  const [initialDuration, setInitialDuration] = useState(180);
+  const [timeLeft, setTimeLeft] = useState(180);
+  const [testCompleted, setTestCompleted] = useState(false);
+  const [totalPoints, setTotalPoints] = useState(0);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -40,6 +61,50 @@ const TestPage = () => {
 
     fetchQuestions();
   }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(
+      doc(db, "testSession", "current"),
+      (docSnapshot) => {
+        const data = docSnapshot.data();
+        if (data) {
+          setSessionStatus(data.status);
+          setPausedDuration(data.pausedDuration || 0);
+          setInitialDuration(data.initialDuration || 180);
+          setStartTimestamp(data.startTimestamp || null);
+        } else {
+          setSessionStatus("stopped");
+        }
+      }
+    );
+
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (sessionStatus !== "started" || !startTimestamp) return;
+
+    let startSeconds = null;
+    if (startTimestamp?.seconds) {
+      startSeconds = startTimestamp.seconds;
+    } else if (typeof startTimestamp?.toMillis === "function") {
+      startSeconds = Math.floor(startTimestamp.toMillis() / 1000);
+    }
+
+    if (startSeconds === null) return;
+
+    const interval = setInterval(() => {
+      const now = Math.floor(Date.now() / 1000);
+      const elapsed = now - startSeconds - pausedDuration;
+      const remaining = Math.max(initialDuration - elapsed, 0);
+      setTimeLeft(remaining);
+      if (remaining === 0) {
+        submitAnswers();
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [sessionStatus, startTimestamp, pausedDuration, initialDuration]);
 
   const currentQuestion = questions[currentQuestionIndex];
 
@@ -60,21 +125,29 @@ const TestPage = () => {
   };
 
   const submitAnswers = async () => {
+    if (hasSubmitted) return;
+    setHasSubmitted(true);
+
     const user = auth.currentUser;
     if (!user) {
       alert("Будь ласка, увійдіть у систему.");
       return;
     }
 
-    let totalPoints = 0;
+    const answerDocRef = doc(db, "userAnswers", user.uid);
+    const existing = await getDoc(answerDocRef);
+    if (existing.exists()) {
+      console.warn("Відповіді вже були надіслані.");
+      return;
+    }
 
+    let points = 0;
     const detailedResults = questions
       .map((question, index) => {
         const userAnswer = answers[index];
         if (!userAnswer) return null;
 
         let earnedPoints = 0;
-
         if (question.type === "single") {
           earnedPoints = userAnswer === question.answer ? 1 : 0;
         } else if (question.type === "input") {
@@ -83,7 +156,7 @@ const TestPage = () => {
           earnedPoints = calculateMatchingPoints(userAnswer, question.answer);
         }
 
-        totalPoints += earnedPoints;
+        points += earnedPoints;
 
         return {
           questionId: question.id,
@@ -99,34 +172,76 @@ const TestPage = () => {
       })
       .filter(Boolean);
 
-    const answerDocRef = doc(db, "userAnswers", `${user.uid}_${Date.now()}`);
-
     try {
       await setDoc(answerDocRef, {
         uid: user.uid,
         userEmail: user.email,
         results: detailedResults,
-        submittedAt: new Date().toISOString(),
-        score: totalPoints, // <-- тепер ЗБЕРІГАЄМО просто число
+        submittedAt: serverTimestamp(),
+        score: points,
       });
-      alert("Відповіді збережено!");
-      navigate("/results");
+
+      setTotalPoints(points);
+      setTestCompleted(true);
     } catch (error) {
-      console.error("Помилка при збереженні:", error);
-      alert("Сталася помилка при збереженні відповідей.");
+      console.error("Помилка при збереженні відповідей:", error);
+      alert("Не вдалося зберегти відповіді.");
     }
   };
 
-  if (loading) return <p>Завантаження...</p>;
+  if (loading || sessionStatus === "loading") {
+    return <p>Завантаження...</p>;
+  }
+
+  if (testCompleted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-green-600 mb-4">
+            Дякуємо! Тест завершено.
+          </h2>
+          <p className="text-lg text-gray-800">
+            Ваш результат: <span className="font-semibold">{totalPoints}</span>{" "}
+            балів.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (sessionStatus === "paused") {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-orange-500 text-xl font-semibold">
+          Тест призупинено. Зачекайте на відновлення.
+        </p>
+      </div>
+    );
+  }
+
+  if (sessionStatus !== "started") {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-red-500 text-xl font-semibold">
+          Тест ще не розпочато. Зачекайте, будь ласка.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <MathJaxContext config={mathJaxConfig}>
       <div className="max-w-5xl mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-4">
-          Питання{" "}
-          <span className="text-orange-600">{currentQuestionIndex + 1}</span> з{" "}
-          {questions.length}
-        </h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold">
+            Питання{" "}
+            <span className="text-orange-600">{currentQuestionIndex + 1}</span>{" "}
+            з {questions.length}
+          </h1>
+          <div className="text-xl font-mono text-blue-600">
+            Час залишився: {formatTime(timeLeft)}
+          </div>
+        </div>
 
         <div className="bg-white rounded-xl shadow-md p-6 mb-4">
           <QuestionRenderer
@@ -154,10 +269,10 @@ const TestPage = () => {
           </button>
         </div>
 
-        <div className="text-center">
+        <div className="text-center mt-6">
           <button
             onClick={submitAnswers}
-            className="bg-green-600 text-white px-6 py-3 rounded-xl"
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl"
           >
             Завершити тест
           </button>

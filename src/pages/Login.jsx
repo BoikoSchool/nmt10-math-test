@@ -1,4 +1,3 @@
-// src/pages/Login.jsx
 import { useState } from "react";
 import { auth } from "../firebase.js";
 import {
@@ -17,9 +16,9 @@ export default function Login() {
   const handleRegister = async () => {
     try {
       await createUserWithEmailAndPassword(auth, email, password);
-      // Якщо реєструється адмін — одразу ведемо на /results
+      // Якщо реєструється адмін — одразу ведемо на /admin
       if (email === "admin@boiko.com.ua") {
-        navigate("/results");
+        navigate("/admin");
       } else {
         navigate("/test");
       }
@@ -37,8 +36,9 @@ export default function Login() {
       );
       const user = userCredential.user;
 
+      // Якщо користувач є адміном — перенаправляємо на /admin
       if (user.email === "admin@boiko.com.ua") {
-        navigate("/results");
+        navigate("/admin");
       } else {
         navigate("/test");
       }

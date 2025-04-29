@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import TestPage from "./pages/TestPage";
 import ResultsPage from "./pages/ResultsPage";
+import AdminPanel from "./pages/AdminPanel";
 // import { useEffect } from "react";
 // import { uploadQuestions } from "./uploadQuestions";
 
@@ -16,6 +17,7 @@ export default function App() {
       <Route path="/" element={<Login />} />
       <Route path="/test" element={<TestPage />} />
       <Route path="/results" element={<ResultsPage />} />
+      <Route path="/admin" element={<AdminPanel />} />
     </Routes>
   );
 }
