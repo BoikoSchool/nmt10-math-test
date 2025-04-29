@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 export default function AdminPanel() {
   const [status, setStatus] = useState("loading");
   const [timeLeft, setTimeLeft] = useState(0);
-  const [initialDuration, setInitialDuration] = useState(180); // 5 хвилин
+  const [initialDuration, setInitialDuration] = useState(7200);
   const [pausedDuration, setPausedDuration] = useState(0);
   const [startTimestamp, setStartTimestamp] = useState(null);
   const [lastPausedAt, setLastPausedAt] = useState(null);
@@ -17,7 +17,7 @@ export default function AdminPanel() {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setStatus(data.status);
-        setInitialDuration(data.initialDuration || 180);
+        setInitialDuration(data.initialDuration || 7200);
         setPausedDuration(data.pausedDuration || 0);
         setStartTimestamp(data.startTimestamp?.seconds || null);
         setLastPausedAt(data.lastPausedAt || null);

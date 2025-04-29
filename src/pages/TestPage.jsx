@@ -51,8 +51,8 @@ const TestPage = () => {
   const [sessionStatus, setSessionStatus] = useState("loading");
   const [startTimestamp, setStartTimestamp] = useState(null);
   const [pausedDuration, setPausedDuration] = useState(0);
-  const [initialDuration, setInitialDuration] = useState(180);
-  const [timeLeft, setTimeLeft] = useState(180);
+  const [initialDuration, setInitialDuration] = useState(7200);
+  const [timeLeft, setTimeLeft] = useState(7200);
   const [testCompleted, setTestCompleted] = useState(false);
   const [totalPoints, setTotalPoints] = useState({});
   const [hasSubmitted, setHasSubmitted] = useState(false);
@@ -102,7 +102,7 @@ const TestPage = () => {
         if (data) {
           setSessionStatus(data.status);
           setPausedDuration(data.pausedDuration || 0);
-          setInitialDuration(data.initialDuration || 180);
+          setInitialDuration(data.initialDuration || 7200);
           setStartTimestamp(data.startTimestamp || null);
         } else {
           setSessionStatus("stopped");
