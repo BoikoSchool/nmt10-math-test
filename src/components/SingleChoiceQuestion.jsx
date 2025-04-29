@@ -1,6 +1,16 @@
+import { useEffect, useState } from "react";
 import { MathJax } from "better-react-mathjax";
 
 const SingleChoiceQuestion = ({ question, onAnswer, selectedAnswer }) => {
+  const [shuffledOptions, setShuffledOptions] = useState([]);
+
+  useEffect(() => {
+    if (question?.options?.length) {
+      const shuffled = [...question.options].sort(() => Math.random() - 0.5);
+      setShuffledOptions(shuffled);
+    }
+  }, [question]);
+
   return (
     <div className="space-y-4">
       <MathJax className="text-lg font-semibold whitespace-pre-line">
@@ -16,7 +26,7 @@ const SingleChoiceQuestion = ({ question, onAnswer, selectedAnswer }) => {
       )}
 
       <div className="space-y-2">
-        {question.options.map((opt, index) => (
+        {shuffledOptions.map((opt, index) => (
           <label
             key={index}
             className={`block p-3 border rounded-lg cursor-pointer transition-all duration-200 ${

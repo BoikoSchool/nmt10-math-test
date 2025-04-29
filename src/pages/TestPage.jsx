@@ -55,11 +55,29 @@ const TestPage = () => {
   useEffect(() => {
     const fetchQuestions = async () => {
       const snapshot = await getDocs(collection(db, "questions"));
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-      data.sort((a, b) => a.id - b.id);
+      let data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+      // Відібрати та перемішати тільки питання типу "single"
+      const singleQuestions = data.filter((q) => q.type === "single");
+      const otherQuestions = data.filter((q) => q.type !== "single");
+
+      // Функція перемішування масиву
+      const shuffleArray = (arr) => {
+        return arr
+          .map((item) => ({ item, sort: Math.random() }))
+          .sort((a, b) => a.sort - b.sort)
+          .map(({ item }) => item);
+      };
+
+      const shuffledSingle = shuffleArray(singleQuestions);
+
+      // Об'єднати: спочатку shuffled single, потім інші
+      data = [...shuffledSingle, ...otherQuestions];
+
       setQuestions(data);
       setLoading(false);
     };
+
     fetchQuestions();
   }, []);
 
