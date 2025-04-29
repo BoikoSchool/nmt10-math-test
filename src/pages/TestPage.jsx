@@ -226,8 +226,8 @@ const TestPage = () => {
             Дякуємо! Тест пройдено.
           </h2>
           <p className="text-lg text-gray-800">
-            Це ваш результат:{" "}
-            <span className="font-semibold">{totalPoints}</span> балів.
+            Ваш результат: <span className="font-semibold">{totalPoints}</span>{" "}
+            балів.
           </p>
         </div>
       </div>

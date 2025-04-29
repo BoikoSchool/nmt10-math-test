@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { db } from "../firebase";
 import { doc, updateDoc, onSnapshot } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
 
 export default function AdminPanel() {
   const [status, setStatus] = useState("loading");
@@ -9,6 +10,7 @@ export default function AdminPanel() {
   const [pausedDuration, setPausedDuration] = useState(0);
   const [startTimestamp, setStartTimestamp] = useState(null);
   const [lastPausedAt, setLastPausedAt] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const unsub = onSnapshot(doc(db, "testSession", "current"), (docSnap) => {
@@ -111,7 +113,15 @@ export default function AdminPanel() {
 
   return (
     <div className="p-8 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Панель адміністратора</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold mb-4">Панель адміністратора</h1>
+        <button
+          onClick={() => navigate("/admin")}
+          className="bg-purple-600 text-white px-4 py-2 rounded"
+        >
+          Адміністрування
+        </button>
+      </div>
       <p className="mb-4">Статус: {status}</p>
       <p className="mb-4">Час залишився: {formatTime(timeLeft)}</p>
 
