@@ -328,7 +328,7 @@ const TestPage = () => {
           <div className="text-center mt-6">
             <button
               onClick={() => submitAnswers(false)}
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl"
+              className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl"
             >
               Завершити тест
             </button>
