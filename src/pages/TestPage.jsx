@@ -327,7 +327,11 @@ const TestPage = () => {
           </div>
           <div className="text-center mt-6">
             <button
-              onClick={() => submitAnswers(false)}
+              onClick={() => {
+                if (window.confirm("Ви впевнені, що бажаєте завершити тест?")) {
+                  submitAnswers(false);
+                }
+              }}
               className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl"
             >
               Завершити тест
