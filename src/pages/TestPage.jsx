@@ -10,6 +10,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db, auth } from "../firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import QuestionRenderer from "../components/QuestionRenderer";
 import { MathJaxContext } from "better-react-mathjax";
 
@@ -49,6 +50,7 @@ const TestPage = () => {
   const [testCompleted, setTestCompleted] = useState(false);
   const [totalPoints, setTotalPoints] = useState(0);
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [userEmail, setUserEmail] = useState(null);
 
   useEffect(() => {
     const fetchQuestions = async () => {
@@ -109,6 +111,16 @@ const TestPage = () => {
       return () => clearTimeout(timeout);
     }
   }, [timeLeft]);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setUserEmail(user.email);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const currentQuestion = questions[currentQuestionIndex];
 
@@ -260,6 +272,12 @@ const TestPage = () => {
             </button>
           </div>
         </div>
+
+        {userEmail && (
+          <div className="mb-4 text-right text-sm text-gray-600">
+            Ви увійшли як: <span className="font-semibold">{userEmail}</span>
+          </div>
+        )}
 
         <div className="bg-white rounded-xl shadow-md p-6 mb-4">
           <QuestionRenderer
