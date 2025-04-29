@@ -58,7 +58,6 @@ const TestPage = () => {
       setQuestions(data);
       setLoading(false);
     };
-
     fetchQuestions();
   }, []);
 
@@ -77,7 +76,6 @@ const TestPage = () => {
         }
       }
     );
-
     return () => unsub();
   }, []);
 
@@ -98,13 +96,19 @@ const TestPage = () => {
       const elapsed = now - startSeconds - pausedDuration;
       const remaining = Math.max(initialDuration - elapsed, 0);
       setTimeLeft(remaining);
-      if (remaining === 0) {
-        submitAnswers();
-      }
     }, 1000);
 
     return () => clearInterval(interval);
   }, [sessionStatus, startTimestamp, pausedDuration, initialDuration]);
+
+  useEffect(() => {
+    if (timeLeft === 0 && !hasSubmitted) {
+      const timeout = setTimeout(() => {
+        submitAnswers(true);
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [timeLeft]);
 
   const currentQuestion = questions[currentQuestionIndex];
 
@@ -124,7 +128,7 @@ const TestPage = () => {
     }
   };
 
-  const submitAnswers = async () => {
+  const submitAnswers = async (autoSubmitted = false) => {
     if (hasSubmitted) return;
     setHasSubmitted(true);
 
@@ -134,10 +138,20 @@ const TestPage = () => {
       return;
     }
 
-    const answerDocRef = doc(db, "userAnswers", user.uid);
+    const answerDocRef = doc(db, "userAnswers", `${user.uid}_${Date.now()}`);
     const existing = await getDoc(answerDocRef);
-    if (existing.exists()) {
-      console.warn("Відповіді вже були надіслані.");
+    if (existing.exists()) return;
+
+    if (Object.keys(answers).length === 0) {
+      await setDoc(answerDocRef, {
+        uid: user.uid,
+        userEmail: user.email,
+        results: [],
+        score: 0,
+        submittedAt: serverTimestamp(),
+        autoSubmitted,
+      });
+      setTestCompleted(true);
       return;
     }
 
@@ -172,21 +186,17 @@ const TestPage = () => {
       })
       .filter(Boolean);
 
-    try {
-      await setDoc(answerDocRef, {
-        uid: user.uid,
-        userEmail: user.email,
-        results: detailedResults,
-        submittedAt: serverTimestamp(),
-        score: points,
-      });
+    await setDoc(answerDocRef, {
+      uid: user.uid,
+      userEmail: user.email,
+      results: detailedResults,
+      score: points,
+      submittedAt: serverTimestamp(),
+      autoSubmitted,
+    });
 
-      setTotalPoints(points);
-      setTestCompleted(true);
-    } catch (error) {
-      console.error("Помилка при збереженні відповідей:", error);
-      alert("Не вдалося зберегти відповіді.");
-    }
+    setTotalPoints(points);
+    setTestCompleted(true);
   };
 
   if (loading || sessionStatus === "loading") {
@@ -198,11 +208,11 @@ const TestPage = () => {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-green-600 mb-4">
-            Дякуємо! Тест завершено.
+            Дякуємо! Тест пройдено.
           </h2>
           <p className="text-lg text-gray-800">
-            Ваш результат: <span className="font-semibold">{totalPoints}</span>{" "}
-            балів.
+            Це ваш результат:{" "}
+            <span className="font-semibold">{totalPoints}</span> балів.
           </p>
         </div>
       </div>
@@ -241,6 +251,14 @@ const TestPage = () => {
           <div className="text-xl font-mono text-blue-600">
             Час залишився: {formatTime(timeLeft)}
           </div>
+          <div className="text-center mt-6">
+            <button
+              onClick={() => submitAnswers(false)}
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl"
+            >
+              Завершити тест
+            </button>
+          </div>
         </div>
 
         <div className="bg-white rounded-xl shadow-md p-6 mb-4">
@@ -266,15 +284,6 @@ const TestPage = () => {
             className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
           >
             Далі
-          </button>
-        </div>
-
-        <div className="text-center mt-6">
-          <button
-            onClick={submitAnswers}
-            className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl"
-          >
-            Завершити тест
           </button>
         </div>
       </div>
