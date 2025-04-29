@@ -119,7 +119,7 @@ export default function AdminPanel() {
           onClick={() => navigate("/results")}
           className="bg-purple-600 text-white px-4 py-2 rounded"
         >
-          Адміністрування
+          Результати
         </button>
       </div>
       <p className="mb-4">Статус: {status}</p>
