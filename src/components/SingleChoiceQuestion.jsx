@@ -50,7 +50,7 @@ const SingleChoiceQuestion = ({ question, onAnswer, selectedAnswer }) => {
                 className="w-36 h-36 object-contain inline"
               />
             ) : (
-              opt.label
+              <MathJax dynamic>{opt.label}</MathJax>
             )}
           </label>
         ))}
