@@ -3,7 +3,7 @@ import { db } from "./firebase";
 import { collection, setDoc, doc } from "firebase/firestore";
 
 // Масив питань
-const questionsUkr = [
+const questionsUkr10 = [
   {
     id: 1,
     type: "single",
@@ -597,11 +597,11 @@ const questionsUkr = [
   },
 ];
 
-export const uploadQuestionsUkr = async () => {
-  const questionsRef = collection(db, "questionsUkr");
+export const uploadQuestionsUkr10 = async () => {
+  const questionsRef = collection(db, "questionsUkr10");
 
   // Завантажуємо кожне питання в Firebase
-  for (let question of questionsUkr) {
+  for (let question of questionsUkr10) {
     await setDoc(doc(questionsRef, question.id.toString()), question);
   }
 

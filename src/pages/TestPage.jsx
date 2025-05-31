@@ -66,7 +66,7 @@ const TestPage = () => {
   useEffect(() => {
     const fetchQuestions = async (subjectToFetch) => {
       const collectionName =
-        subjectToFetch === "math" ? "questions" : "questionsUkr";
+        subjectToFetch === "math" ? "questions10" : "questionsUkr10";
       const snapshot = await getDocs(collection(db, collectionName));
       let data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
