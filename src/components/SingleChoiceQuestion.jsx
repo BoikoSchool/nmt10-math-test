@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { MathJax } from "better-react-mathjax";
 
+const containsLatex = (text) => /\$|\\\(|\\frac|\\sqrt|\\int|\\sum/.test(text);
+
 const SingleChoiceQuestion = ({ question, onAnswer, selectedAnswer }) => {
   const [shuffledOptions, setShuffledOptions] = useState([]);
 
@@ -13,9 +15,15 @@ const SingleChoiceQuestion = ({ question, onAnswer, selectedAnswer }) => {
 
   return (
     <div className="space-y-4">
-      <MathJax className="text-lg font-semibold whitespace-pre-line">
-        {question.question}
-      </MathJax>
+      {containsLatex(question.question) ? (
+        <MathJax className="text-lg font-semibold whitespace-pre-line">
+          {question.question}
+        </MathJax>
+      ) : (
+        <div className="text-lg font-semibold whitespace-pre-line">
+          {question.question}
+        </div>
+      )}
 
       {question.image && (
         <img
@@ -49,8 +57,10 @@ const SingleChoiceQuestion = ({ question, onAnswer, selectedAnswer }) => {
                 alt={`Option ${opt.label}`}
                 className="w-36 h-36 object-contain inline"
               />
-            ) : (
+            ) : containsLatex(opt.label) ? (
               <MathJax dynamic>{opt.label}</MathJax>
+            ) : (
+              <span>{opt.label}</span>
             )}
           </label>
         ))}

@@ -139,6 +139,46 @@ const ResultsPage = () => {
   const formatAnswer = (ans) =>
     typeof ans === "object" ? Object.values(ans).join(", ") : ans;
 
+  const exportToCSV = () => {
+    const rows = [
+      [
+        "Email",
+        "Предмет",
+        "№ Питання",
+        "Ваша відповідь",
+        "Правильна відповідь",
+        "Бали",
+        "Правильно?",
+      ],
+    ];
+
+    Object.entries(grouped).forEach(([email, { results = [] }]) => {
+      results.forEach((item) => {
+        rows.push([
+          email,
+          item.subject === "math" ? "Математика" : "Укр. мова",
+          item.questionId,
+          formatAnswer(item.userAnswer),
+          formatAnswer(item.correctAnswer),
+          item.earnedPoints,
+          item.isCorrect ? "Так" : "Ні",
+        ]);
+      });
+    });
+
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      rows.map((e) => e.map((cell) => `"${cell}"`).join(",")).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "results.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (authorized === null) return <p>Перевірка доступу...</p>;
   if (!authorized) return null;
   if (loading) return <p>Завантаження результатів...</p>;
@@ -147,7 +187,7 @@ const ResultsPage = () => {
     <MathJaxContext>
       <div className="max-w-5xl mx-auto p-6">
         {/* Навігація */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-6 gap-2 flex-wrap">
           <button
             onClick={() => navigate("/admin")}
             className="bg-purple-600 text-white px-4 py-2 rounded"
@@ -155,12 +195,20 @@ const ResultsPage = () => {
             Адміністрування
           </button>
           <h1 className="text-2xl font-bold">Результати тестів</h1>
-          <button
-            onClick={() => navigate("/test")}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg"
-          >
-            Пройти тест
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={exportToCSV}
+              className="bg-yellow-500 text-white px-4 py-2 rounded-lg"
+            >
+              Експортувати в CSV
+            </button>
+            <button
+              onClick={() => navigate("/test")}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg"
+            >
+              Пройти тест
+            </button>
+          </div>
         </div>
 
         {/* Список користувачів */}
